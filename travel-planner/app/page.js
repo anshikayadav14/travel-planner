@@ -27,28 +27,53 @@ export default function Home() {
   const [exit, setExit] = useState(0); // -1 skip, 1 like
   const startX = useRef(0);
 
-  async function handleSubmit(e) {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
-    try {
-      const res = await fetch("/api/suggest", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ destination, budget, days }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.cards?.length) throw new Error(data.error || "Something went wrong");
-      setCards(data.cards);
-      setIndex(0);
-      setLiked([]);
-      setTrip(null);
-      setStage("swipe");
-    } catch (err) {
-      setError(err.message);
-    }
-    setLoading(false);
+  async function checkPlace(name) {
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&q=${encodeURIComponent(name)}`
+    );
+    const results = await res.json();
+    // accept only real populated places or regions, not shops or random objects
+    return results.find((r) =>
+      ["place", "boundary"].includes(r.category || r.class)
+    );
+  } catch {
+    return "unknown"; // lookup failed: don't block the user
   }
+}
+
+async function handleSubmit(e) {
+  e.preventDefault();
+  setLoading(true);
+  setError("");
+
+  const place = await checkPlace(destination);
+  if (!place) {
+    setError(
+      `We couldn't find "${destination}" on the map. Check the spelling, or try a city, region or country.`
+    );
+    setLoading(false);
+    return;
+  }
+
+  try {
+    const res = await fetch("/api/suggest", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ destination, budget, days }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.cards?.length) throw new Error(data.error || "Something went wrong");
+    setCards(data.cards);
+    setIndex(0);
+    setLiked([]);
+    setTrip(null);
+    setStage("swipe");
+  } catch (err) {
+    setError(err.message);
+  }
+  setLoading(false);
+}
 
   function swipe(dir) {
     if (exit !== 0 || index >= cards.length) return;
