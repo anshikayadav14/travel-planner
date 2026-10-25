@@ -1,7 +1,9 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
-import PlaceImage from "@/components/PlaceImage";
 import dynamic from "next/dynamic";
+import PlaceImage from "@/components/PlaceImage";
+import PrintableTrip from "@/components/PrintableTrip";
+
 const TripMap = dynamic(() => import("@/components/TripMap"), { ssr: false });
 
 const popular = ["Goa", "Manali", "Jaipur", "Bali", "Paris"];
@@ -91,6 +93,10 @@ export default function Home() {
     setError("");
   }
 
+  function downloadPdf() {
+    window.print();
+  }
+
   // arrow keys
   useEffect(() => {
     if (stage !== "swipe") return;
@@ -108,14 +114,17 @@ export default function Home() {
   const primaryBtn =
     "w-full rounded-xl bg-teal-600 px-4 py-3.5 font-medium text-white shadow-lg shadow-teal-600/20 transition hover:bg-teal-700 disabled:opacity-60";
 
+  const mapsLink = (q) =>
+    `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
+
   const current = cards[index];
   const x = exit ? exit * 500 : dragX;
 
   return (
     <main className="relative min-h-screen overflow-hidden">
-      <div className="pointer-events-none absolute -top-40 left-1/2 h-[500px] w-[800px] -translate-x-1/2 rounded-full bg-gradient-to-r from-teal-200 via-sky-200 to-indigo-200 opacity-60 blur-3xl" />
+      <div className="pointer-events-none absolute -top-40 left-1/2 h-[500px] w-[800px] -translate-x-1/2 rounded-full bg-gradient-to-r from-teal-200 via-sky-200 to-indigo-200 opacity-60 blur-3xl print:hidden" />
 
-      <div className="relative mx-auto max-w-2xl px-6 py-16">
+      <div className="relative mx-auto max-w-2xl px-6 py-16 print:hidden">
         <div className="text-center">
           <span className="inline-block rounded-full border border-teal-200 bg-white px-3 py-1 text-xs font-medium text-teal-700">
             ✦ AI Travel Planner
@@ -259,16 +268,20 @@ export default function Home() {
                     </span>
 
                     <div className="mt-4">
-                    <PlaceImage name={current.name} destination={destination} fallback={current.emoji} />
+                      <PlaceImage
+                        name={current.name}
+                        destination={destination}
+                        fallback={current.emoji}
+                      />
                     </div>
                     <span className="mt-6 inline-block rounded-full bg-teal-50 px-3 py-1 text-xs font-medium capitalize text-teal-700">
                       {current.category}
                     </span>
                     {current.type === "hidden gem" && (
-                    <span className="ml-2 mt-6 inline-block rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">
-                    💎 Local gem
-                    </span>
-                     )}
+                      <span className="ml-2 mt-6 inline-block rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">
+                        💎 Local gem
+                      </span>
+                    )}
                     <h2 className="mt-3 text-2xl font-semibold">{current.name}</h2>
                     <p className="mt-3 text-slate-500">{current.blurb}</p>
                     <p className="mt-6 text-sm font-medium text-slate-700">
@@ -358,7 +371,21 @@ export default function Home() {
             </div>
 
             <p className="text-lg text-slate-600">{trip.summary}</p>
-            <TripMap stops={trip.stops} restaurants={trip.restaurants} destination={destination} />
+
+            <div className="flex flex-wrap gap-3">
+              <button
+                onClick={downloadPdf}
+                className="rounded-xl bg-teal-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-teal-700"
+              >
+                ⬇ Download PDF
+              </button>
+            </div>
+
+            <TripMap
+              stops={trip.stops}
+              restaurants={trip.restaurants}
+              destination={destination}
+            />
 
             <div className="flex flex-wrap gap-2">
               {liked.map((c) => (
@@ -391,18 +418,18 @@ export default function Home() {
               <div className="grid gap-4 sm:grid-cols-2">
                 {trip.places?.map((p) => (
                   <div key={p.name} className={card}>
-                  <PlaceImage name={p.name} destination={destination} />
-                  <h3 className="mt-2 font-semibold">{p.name}</h3>
-                   <p className="mt-1 text-sm text-slate-600">{p.description}</p>
+                    <PlaceImage name={p.name} destination={destination} />
+                    <h3 className="mt-2 font-semibold">{p.name}</h3>
+                    <p className="mt-1 text-sm text-slate-600">{p.description}</p>
                     <a
-    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.name + " " + destination)}`}
-    target="_blank"
-    rel="noreferrer"
-    className="mt-3 inline-block text-sm font-medium text-teal-600 hover:underline"
-  >
-    Open in Google Maps ↗
-  </a>
-</div>
+                      href={mapsLink(`${p.name} ${destination}`)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-3 inline-block text-sm font-medium text-teal-600 hover:underline"
+                    >
+                      Open in Google Maps ↗
+                    </a>
+                  </div>
                 ))}
               </div>
             </section>
@@ -415,6 +442,14 @@ export default function Home() {
                     <h3 className="font-semibold">{r.name}</h3>
                     <p className="mt-1 text-sm text-slate-600">Try: {r.dish}</p>
                     <p className="text-sm text-slate-400">{r.priceRange}</p>
+                    <a
+                      href={mapsLink(`${r.name} restaurant ${destination}`)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-3 inline-block text-sm font-medium text-teal-600 hover:underline"
+                    >
+                      Open in Google Maps ↗
+                    </a>
                   </div>
                 ))}
               </div>
@@ -453,6 +488,8 @@ export default function Home() {
           <p className="mt-6 rounded-xl bg-red-50 p-4 text-sm text-red-600">{error}</p>
         )}
       </div>
+
+      <PrintableTrip trip={trip} destination={destination} days={days} />
     </main>
   );
 }
